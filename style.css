@@ -1,0 +1,66 @@
+* {
+  box-sizing: border-box;
+}
+
+table {
+  width: 100%;
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid black;
+  border-collapse: collapse;
+  width: 15%;
+  font-size: 0.95em;
+}
+
+th.empty,
+td.empty {
+  width: 2%;
+}
+
+td.empty {
+  background: #eee;
+}
+
+th.service-name {
+  font-size: 1.2em;
+  font-weight: bold;
+  text-align: left;
+}
+
+th.day {
+  font-size: xx-large;
+  font-weight: bold;
+}
+
+td.monthly {
+  width: 2.25%;
+}
+
+td.assignment {
+  font-size: x-large;
+  text-align: center;
+}
+
+.header {
+  width: 100%;
+  text-align: center;
+  border: 1px solid black;
+}
+
+.banner {
+  width: 100%;
+  height: fit-content;
+  text-align: center;
+  padding: 0;
+  border: 1px solid black;
+  font-weight: bold;
+  font-size: xx-large;
+}
+
+.dark-background {
+  background: lightgray;
+}
