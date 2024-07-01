@@ -1,12 +1,13 @@
+import os
 import calendar
-import re
 import pandas as pd
+from helpers import trim_task_name
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
 
 class Roster:
-    def __init__(self):
+    def __init__(self, assignment_history_file):
         # Read eligibility matrix
         self.eligibility_df = pd.read_csv("men.csv")
         self.eligibility_df.set_index("name", inplace=True)
@@ -14,9 +15,6 @@ class Roster:
         # Read exclusions matrix
         self.exclusions_df = pd.read_csv("exclusions.csv", index_col=0)
         self.exclusions_df.fillna(0, inplace=True)
-
-        # Past assginment frequency
-        self.assignments_file = "previous-assignments.csv"
 
         # Duty codes
         self.duty_codes_df = pd.read_csv("duty-codes.csv")
@@ -33,11 +31,35 @@ class Roster:
 
         self.tasks = list(self.eligibility_df.columns)
 
+        # Historical assignment frequency
+        self.assignment_history_file = assignment_history_file
+        self.initialize_history(assignment_history_file)
+
         # should try to minimize the deviation from the ideal average
         self.ideal_avg = {
             task: 1 / count
             for task, count in self.eligibility_df.sum(axis=0).to_dict().items()
         }
+
+    def initialize_history(self, assignment_history_file):
+        if os.path.exists(assignment_history_file):
+            self.assignment_history_df = pd.read_csv(
+                assignment_history_file, index_col=0
+            )
+        else:
+            self.assignment_history_df = pd.DataFrame(
+                0, index=self.people, columns=self.tasks
+            )
+            self.assignment_history_df["Rounds"] = 0
+
+        self.assignment_history_df.to_csv(assignment_history_file)
+
+    def record_assignments(self, assignments):
+        for task, person in assignments.items():
+            self.assignment_history_df.loc[person, trim_task_name(task)] += 1
+
+        self.assignment_history_df["Rounds"] += 1
+        self.assignment_history_df.to_csv(self.assignment_history_file)
 
     def is_eligible(self, person, task) -> bool:
         return self.eligibility_df.loc[person, task] == 1.0

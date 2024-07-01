@@ -1,14 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
-
 import pandas as pd
 from itertools import zip_longest
 from collections import OrderedDict
 from pulp import *
 from schedule import Schedule
-from roster import Roster
 from helpers import *
 
 
@@ -23,6 +20,7 @@ def solve_schedule(schedule: Schedule):
 
     people = roster.people
     tasks = roster.tasks
+    assignment_history_df = roster.assignment_history_df
     is_eligible = roster.is_eligible
     get_eligible = roster.get_eligible
     is_excluded = roster.is_excluded
@@ -31,24 +29,13 @@ def solve_schedule(schedule: Schedule):
     all_date_tasks = schedule.all_date_tasks
     get_date_tasks = schedule.get_date_tasks
 
-    assignments_file = "previous-assignments.csv"
-
-    # Initialize or read previous assignments
-    if os.path.exists(assignments_file):
-        previous_assignments_df = pd.read_csv(assignments_file, index_col=0)
-    else:
-        previous_assignments_df = pd.DataFrame(0, index=people, columns=tasks)
-        previous_assignments_df["Rounds"] = 0
-
-    previous_assignments_df["Rounds"] += 1
-
     # Calculate the average assignment frequency for each task
     avg_assignments = pd.DataFrame(index=people, columns=tasks)
     for person in people:
         for task in tasks:
-            avg_assignments.loc[person, task] = previous_assignments_df.loc[
+            avg_assignments.loc[person, task] = assignment_history_df.loc[
                 person, task
-            ] / max(previous_assignments_df.loc[person, "Rounds"], 1)
+            ] / max(assignment_history_df.loc[person, "Rounds"], 1)
 
     # # Problem / Objective
 
@@ -126,15 +113,29 @@ def solve_schedule(schedule: Schedule):
                 )
 
     # Task limit constraints
-    # for person in people:
-    #     # !! do we need to limit by week here? This seems to limit to 2 tasks per month
-    #     prob += lpSum(x[(person, task)] for task in date_tasks) <= 2
-
     # Task assignment constraints: each task is assigned to exactly one person
     for task in all_date_tasks:
         prob += lpSum(x[(person, task)] for person in people) == 1
 
+    # hardcoding a custom constraint
+    # not working
+
+    # security_date_tasks = get_date_tasks("security")
+    # usher_date_tasks = get_date_tasks("usher")
+
+    # for custom_assignee in ["Smiley, Justin", "Purcell, Lance"]:
+    #     for i in range(len(security_date_tasks)):
+    #         prob += (
+    #             x[(custom_assignee, usher_date_tasks[i])]
+    #             + x[(custom_assignee, security_date_tasks[i])]
+    #             == 2
+    #             or x[(custom_assignee, usher_date_tasks[i])]
+    #             + x[(custom_assignee, security_date_tasks[i])]
+    #             == 0
+    #         )
+
     # Solve the problem
+    # result = prob.solve()
     result = prob.solve(PULP_CBC_CMD(msg=False))
 
     # Output the results
@@ -148,23 +149,6 @@ def solve_schedule(schedule: Schedule):
             for task in assigned_tasks:
                 if not is_eligible(person, trim_task_name(task)):
                     print(f"{person} is NOT eligilbe for {task}")
-
-    # Output the results
-    assignments = pd.DataFrame(0, index=people, columns=all_date_tasks)
-    for person in people:
-        for task in all_date_tasks:
-            assignments.loc[person, task] = (
-                1 if x[(person, task)].varValue == 1.0 else 0
-            )
-
-    # Update the previous assignments with the current ones
-    for person in people:
-        for task in all_date_tasks:
-            if assignments.loc[person, task]:
-                previous_assignments_df.loc[person, trim_task_name(task)] += 1
-
-    # Save the updated assignments to a CSV file
-    previous_assignments_df.to_csv(assignments_file)
 
     schedule_assignments = OrderedDict()
     for person in people:
@@ -184,7 +168,3 @@ def solve_schedule(schedule: Schedule):
     schedule.set_assignments(schedule_assignments)
 
     return result, schedule, roster
-
-
-if __name__ == "__main__":
-    make_roster(2024, 7)
