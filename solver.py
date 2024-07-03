@@ -68,7 +68,10 @@ def solve_schedule(schedule: Schedule):
         if is_eligible(person, trim_task_name(date_task))
     )
 
-    # # Constraints
+    ###
+    # Constraints
+    ###
+
     # Only assign eligible people
     for person in people:
         for task in tasks:

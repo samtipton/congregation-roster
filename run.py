@@ -124,7 +124,7 @@ def main():
     print("")
     print("html: " + link(f"file://{html_output_path}"))
     print("json: " + link(f"file://{json_output_path}"))
-    print("pdf: " + link(f"file://{pdf_output_file}"))
+    print("pdf:  " + link(f"file://{pdf_output_file}"))
 
 
 if __name__ == "__main__":
