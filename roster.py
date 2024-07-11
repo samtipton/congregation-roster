@@ -41,6 +41,14 @@ class Roster:
             for task, count in self.eligibility_df.sum(axis=0).to_dict().items()
         }
 
+        # actual assignments per person per task
+        self.actual_avg = pd.DataFrame(index=self.people, columns=self.tasks)
+        for person in self.people:
+            for task in self.tasks:
+                self.actual_avg.loc[person, task] = self.assignment_history_df.loc[
+                    person, task
+                ] / max(self.assignment_history_df.loc[person, "Rounds"], 1)
+
     def initialize_history(self, assignment_history_file):
         if os.path.exists(assignment_history_file):
             self.assignment_history_df = pd.read_csv(
@@ -72,48 +80,3 @@ class Roster:
             self.exclusions_df.loc[task1, task2] == 1
             or self.exclusions_df.loc[task2, task1] == 1
         )
-
-    @classmethod
-    def create_get_date_tasks(cls, cal, duty_codes_df, service_days):
-        """
-        For duties that happen per service or weekly, we need to treat them
-        as separate duties that need to be scheduled. We will add
-        columns to the data like `song_leader-{day/week}`.
-
-        When using the column name as an index into another frame, we
-        must trim the column name back to its original form, e.g. `song_leader`
-
-        duty_codes is referenced to modify how we multiple the duties
-        - duties without any codes (not appearing in this df) are assumed
-          to be done at each service
-        - a code of 'w' represents a weekly duty
-        - a code of 'm' represents a monthly duty
-
-        weeks are zero-indexed, days are not, is that confusing?
-        """
-
-        def get_date_tasks(task):
-            date_tasks = []
-            code = duty_codes_df.at[0, task]
-            if code == "m":
-                date_tasks.append(task)
-            elif code == "w":
-                num_weeks = len(
-                    [
-                        i
-                        for i, week in enumerate(cal)
-                        if any(week[day] for day in service_days)
-                    ]
-                )
-                # account for serviceless beginning weeks!
-                for i in range(num_weeks):
-                    date_tasks.append(f"{task}-{i}")
-            else:
-                codes = str(code)
-                for week in cal:
-                    for i, day in enumerate(week):
-                        if str(i) in codes and day != 0:
-                            date_tasks.append(f"{task}-{day}")
-            return date_tasks
-
-        return get_date_tasks

@@ -8,26 +8,10 @@ import os
 import json
 from pathlib import Path
 from schedule import Schedule
-from solver import PulpScheduleSolver
+from solver import SchedulingProblem
 from render import render_schedule_to_html
 from roster import Roster
 from helpers import *
-
-
-def write_string_to_file(s, path):
-    with open(path, "w") as f:
-        f.write(s)
-
-
-def link(uri, label=None):
-    if label is None:
-        label = uri
-    parameters = ""
-
-    # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST
-    escape_mask = "\033]8;{};{}\033\\{}\033]8;;\033\\"
-
-    return escape_mask.format(parameters, uri, label)
 
 
 def wait_for_user_feedback():
@@ -94,7 +78,10 @@ def main():
     schedule = Schedule(year, month, Roster(assignment_history_file))
 
     # solve the scheduling constraint problem
-    solver_result, solver_assignments, roster = PulpScheduleSolver.solve(schedule)
+    # solver_result, solver_assignments, roster = SchedulingProblem.solve(schedule)
+
+    schedule_problem = SchedulingProblem(schedule)
+    solver_result, solver_assignments, roster = schedule_problem.solve(verbose=True)
 
     # write schedule html
     html = render_schedule_to_html(schedule)
@@ -103,7 +90,7 @@ def main():
     # allow modifying schedule html
     print("")
     print("Please review schedule and make any necessary changes before committing.")
-    print("html: " + link("file://" + html_output_path))
+    print("html: " + term_link("file://" + html_output_path))
     wait_for_user_feedback()
 
     # read back html to accept any new changes (this could be skipped if user reports no changes, maybe we shouldn't trust)
@@ -122,9 +109,9 @@ def main():
 
     # final output
     print("")
-    print("html: " + link(f"file://{html_output_path}"))
-    print("json: " + link(f"file://{json_output_path}"))
-    print("pdf:  " + link(f"file://{pdf_output_file}"))
+    print("html: " + term_link(f"file://{html_output_path}"))
+    print("json: " + term_link(f"file://{json_output_path}"))
+    print("pdf:  " + term_link(f"file://{pdf_output_file}"))
 
 
 if __name__ == "__main__":
