@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import argparse
 import pdfkit
 from pyquery import PyQuery as pq
-import sys
 import os
 import json
 from pathlib import Path
@@ -41,26 +41,41 @@ def assignments_from_html(html_file):
     return assignments
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Congregational Scheduling Constraint Solver"
+    )
+    parser.add_argument("month", type=int, help="the month (1-12)")
+    parser.add_argument("year", type=int, help="the year (e.g. 2025)")
+    parser.add_argument(
+        "dest_file",
+        # type=argparse.FileType("w", encoding="utf-8"),
+        help="the output path for the pdf file",
+    )
+    parser.add_argument(
+        "-s",
+        "--save_file",
+        default="previous-assignments.csv",
+        # type=argparse.FileType("w", encoding="utf-8"),
+        help="optional alternative 'save' csv file. If not specified previous-assignments.csv will be used",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="turn on additional logging"
+    )
+
+    return parser.parse_args()
+
+
 def main():
     """
-    TODO Use ArgParser?
     TODO handle special events (e.g. Gospel Meetings)
     """
 
-    # Accept month and year from command line arguments
-    if len(sys.argv) < 4:
-        print("Usage: python schedule.py <month> <year> </path/to/output_file>")
-        sys.exit(1)
+    args = parse_args()
 
-    month = int(sys.argv[1])
-    year = int(sys.argv[2])
-    pdf_output_file = sys.argv[3]
-
-    if len(sys.argv) == 5:
-        assignment_history_file = sys.argv[4]
-
-    if not assignment_history_file:
-        assignment_history_file = "previous-assignments.csv"
+    month = args.month
+    year = args.year
+    pdf_output_file = args.dest_file
 
     output_dir = os.path.dirname(pdf_output_file)
     output_file_stem = Path(pdf_output_file).stem
@@ -75,13 +90,15 @@ def main():
     os.makedirs(json_dir, exist_ok=True)
 
     # create schedule obj to hold all of our tables and initialize assignment from solver
-    schedule = Schedule(year, month, Roster(assignment_history_file))
+    schedule = Schedule(year, month, Roster(args.save_file))
 
     # solve the scheduling constraint problem
     # solver_result, solver_assignments, roster = SchedulingProblem.solve(schedule)
 
     schedule_problem = SchedulingProblem(schedule)
-    solver_result, solver_assignments, roster = schedule_problem.solve(verbose=True)
+    solver_result, solver_assignments, roster = schedule_problem.solve(
+        verbose=args.verbose
+    )
 
     # write schedule html
     html = render_schedule_to_html(schedule)
