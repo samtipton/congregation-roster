@@ -82,3 +82,7 @@ input[type="text"] {
   margin: 0;
   cursor: text;
 }
+
+td.duty-cell:has(.search-highlight) {
+  background: lightskyblue;
+}

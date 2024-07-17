@@ -3,7 +3,6 @@
 
 import argparse
 import pdfkit
-from pyquery import PyQuery as pq
 import os
 import json
 from pathlib import Path
@@ -11,10 +10,11 @@ from schedule import Schedule
 from solver import SchedulingProblem
 from render import render_schedule_to_html
 from roster import Roster
+from html2history import assignments_from_html
 from helpers import *
 
 
-def wait_for_user_feedback():
+def wait_for_schedule_commit():
     loop = True
     while loop:
         user_input = None
@@ -28,19 +28,6 @@ def wait_for_user_feedback():
                 break
 
 
-def assignments_from_html(html_file):
-    doc = pq(filename=html_file)
-    cells = doc("td.duty-cell")
-    assignments = {}
-
-    for i in range(len(cells)):
-        date_task = cells.eq(i).attr("data-duty")
-        person = cells.eq(i).find("input").attr("value")
-        assignments[date_task] = person
-
-    return assignments
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Congregational Scheduling Constraint Solver"
@@ -49,14 +36,12 @@ def parse_args():
     parser.add_argument("year", type=int, help="the year (e.g. 2025)")
     parser.add_argument(
         "dest_file",
-        # type=argparse.FileType("w", encoding="utf-8"),
         help="the output path for the pdf file",
     )
     parser.add_argument(
         "-s",
         "--save_file",
         default="previous-assignments.csv",
-        # type=argparse.FileType("w", encoding="utf-8"),
         help="optional alternative 'save' csv file. If not specified previous-assignments.csv will be used",
     )
     parser.add_argument(
@@ -92,9 +77,6 @@ def main():
     # create schedule obj to hold all of our tables and initialize assignment from solver
     schedule = Schedule(year, month, Roster(args.save_file))
 
-    # solve the scheduling constraint problem
-    # solver_result, solver_assignments, roster = SchedulingProblem.solve(schedule)
-
     schedule_problem = SchedulingProblem(schedule)
     solver_result, solver_assignments, roster = schedule_problem.solve(
         verbose=args.verbose
@@ -108,7 +90,7 @@ def main():
     print("")
     print("Please review schedule and make any necessary changes before committing.")
     print("html: " + term_link("file://" + html_output_path))
-    wait_for_user_feedback()
+    wait_for_schedule_commit()
 
     # read back html to accept any new changes (this could be skipped if user reports no changes, maybe we shouldn't trust)
     html_assignments = assignments_from_html(html_output_path)

@@ -61,7 +61,7 @@ def render_duty_assignment_cells(
             else (
                 f"""
                 <td class="duty-cell" draggable="true" data-duty="{f'{trimmed_duty}-{week[day_of_week]}'}">
-                    <input type="text" value="{schedule.service_assignments[service][f'{trimmed_duty}-{week[day_of_week]}']}">
+                    <input class="assignment-input" type="text" value="{schedule.service_assignments[service][f'{trimmed_duty}-{week[day_of_week]}']}">
                 </td>
                 """
                 if f"{trimmed_duty}-{week[day_of_week]}"
@@ -123,7 +123,7 @@ def render_weekly_duty_cell(schedule, trimmed_duty):
         (
             f"""
             <td class="duty-cell" draggable="true" data-duty="{f'{trimmed_duty}-{i}'}">
-                <input type="text" value="{service_assignments[f'{trimmed_duty}-{i}']}">
+                <input class="assignment-input" type="text" value="{service_assignments[f'{trimmed_duty}-{i}']}">
             </td>
             """
             if f"{trimmed_duty}-{i}" in service_assignments
@@ -161,7 +161,7 @@ def render_weely_duty_assignment_rows(schedule: Schedule):
     )
 
 
-def render_weeky_duties(schedule: Schedule):
+def render_weekly_duties(schedule: Schedule):
     if schedule.service_assignments["weekly"]:
         return f"""<table><tbody>{render_weely_duty_assignment_rows(schedule)}</tbody></table>"""
     else:
@@ -195,12 +195,16 @@ def render_monthly_duties(schedule: Schedule):
     """
 
 
-def read_schedule_javascript():
-    with open("schedule.js") as f:
-        return f.read()
-
-
 def render_schedule_to_html(schedule: Schedule):
+    """
+    TODO insert/remove controls in html for manual editing
+    TODO show ideal avg delta in cells, e.g. (+.33), if 33% closer to ideal avg after assign
+
+        Will require dynamic re-calculating if the two elements being moved can use a template object with a table
+        to hold ideal averages and each man's average
+
+        Could color-code
+    """
     cal = calendar.monthcalendar(schedule.year, schedule.month)
 
     # assumes sunday, wednesday only
@@ -213,6 +217,9 @@ def render_schedule_to_html(schedule: Schedule):
     with open("style.css", "r") as f:
         style = f.read()
 
+    with open("schedule.js") as f:
+        schedule_js = f.read()
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -221,6 +228,10 @@ def render_schedule_to_html(schedule: Schedule):
             <meta name="pdfkit-orientation" content="Landscape"/>
             <meta http-equiv="Cache-control" content="no-cache, no-store, must-revalidate">
             <meta http-equiv="Pragma" content="no-cache">
+            <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+                    integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+                    crossorigin="anonymous">
+            </script>
             <style>{style}</style>
         </head>
         <body>
@@ -233,8 +244,8 @@ def render_schedule_to_html(schedule: Schedule):
             </div>
             {render_service(service_names[1], 0, schedule, num_services, header=False)}
             {render_service(service_names[2], 3, schedule, num_services)}
-            {render_weeky_duties(schedule)}
-            <script>{read_schedule_javascript()}</script>
+            {render_weekly_duties(schedule)}
+            <script>{schedule_js}</script>
         </body>
     </html>
     """

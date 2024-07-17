@@ -36,8 +36,8 @@ document.addEventListener("DOMContentLoaded", (event) => {
     if (dragSrcEl != this) {
       dragSrcEl.innerHTML = this.innerHTML;
       this.innerHTML = e.dataTransfer.getData("text/html");
-      addInputListener(dragSrcEl.querySelector("input"));
-      addInputListener(this.querySelector("input"));
+      setupInput(dragSrcEl.querySelector("input"));
+      setupInput(this.querySelector("input"));
     }
 
     return false;
@@ -71,8 +71,40 @@ document.addEventListener("DOMContentLoaded", (event) => {
     });
   }
 
+  function addMouseOverListener(input) {
+    input.addEventListener("mouseover", (event) => {
+      // find all inputs with same value and change background
+      let mouseoverValue = input.getAttribute("value");
+      $(".assignment-input")
+        .filter((i, el) => {
+          console.log(`found ${el.value.trim()}`);
+          return el.value.trim() == mouseoverValue;
+        })
+        .addClass("search-highlight");
+    });
+  }
+
+  function addMouseLeaveListener(input) {
+    input.addEventListener("mouseleave", (event) => {
+      // find all inputs with same value and change background
+      let mouseoverValue = input.getAttribute("value");
+      $(".assignment-input")
+        .filter((i, el) => {
+          return el.value.trim() == mouseoverValue;
+        })
+        .removeClass("search-highlight");
+    });
+  }
+
+  function setupInput(input) {
+    input.setSelectionRange(-1, -1);
+    addInputListener(input);
+    addMouseOverListener(input);
+    addMouseLeaveListener(input);
+  }
+
   let inputs = document.querySelectorAll("input");
   inputs.forEach(function (input) {
-    addInputListener(input);
+    setupInput(input);
   });
 });

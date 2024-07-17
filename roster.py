@@ -69,6 +69,16 @@ class Roster:
         self.assignment_history_df["Rounds"] += 1
         self.assignment_history_df.to_csv(self.assignment_history_file)
 
+    def remove_assignments(self, assignments):
+        if self.assignment_history_df["Rounds"] == 0:
+            raise ValueError("Cannot remove_assignments from an empty history")
+
+        for task, person in assignments.items():
+            self.assignment_history_df.loc[person, trim_task_name(task)] -= 1
+
+        self.assignment_history_df["Rounds"] -= 1
+        self.assignment_history_df.to_csv(self.assignment_history_file)
+
     def is_eligible(self, person, task) -> bool:
         return self.eligibility_df.loc[person, task] == 1.0
 
