@@ -70,7 +70,7 @@ class Roster:
         self.assignment_history_df.to_csv(self.assignment_history_file)
 
     def remove_assignments(self, assignments):
-        if self.assignment_history_df["Rounds"] == 0:
+        if self.assignment_history_df["Rounds"].all() == 0:
             raise ValueError("Cannot remove_assignments from an empty history")
 
         for task, person in assignments.items():
