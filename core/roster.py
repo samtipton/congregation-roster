@@ -1,7 +1,7 @@
 import os
 import calendar
 import pandas as pd
-from helpers import trim_task_name
+from util import trim_task_name
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
@@ -9,15 +9,15 @@ calendar.setfirstweekday(calendar.SUNDAY)
 class Roster:
     def __init__(self, assignment_history_file):
         # Read eligibility matrix
-        self.eligibility_df = pd.read_csv("men.csv")
+        self.eligibility_df = pd.read_csv("data/men.csv")
         self.eligibility_df.set_index("name", inplace=True)
 
         # Read exclusions matrix
-        self.exclusions_df = pd.read_csv("exclusions.csv", index_col=0)
+        self.exclusions_df = pd.read_csv("data/exclusions.csv", index_col=0)
         self.exclusions_df.fillna(0, inplace=True)
 
         # Duty codes
-        self.duty_codes_df = pd.read_csv("duty-codes.csv")
+        self.duty_codes_df = pd.read_csv("data/duty-codes.csv")
 
         # Service days
         self.service_days = set(
@@ -74,7 +74,8 @@ class Roster:
             raise ValueError("Cannot remove_assignments from an empty history")
 
         for task, person in assignments.items():
-            self.assignment_history_df.loc[person, trim_task_name(task)] -= 1
+            if self.assignment_history_df.loc[person, trim_task_name(task)] != 0:
+                self.assignment_history_df.loc[person, trim_task_name(task)] -= 1
 
         self.assignment_history_df["Rounds"] -= 1
         self.assignment_history_df.to_csv(self.assignment_history_file)
