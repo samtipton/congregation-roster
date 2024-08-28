@@ -6,9 +6,11 @@ A _work in progress_ python utility for solving the congregational duty scheduli
 
 1. Once csvs are updated with your information, you may run this program to create a schedule that optimizes for fairly scheduling people to tasks. Fairness here means that the average assignment frequency difference between men signed up for a particular task is minimized across all people and tasks.
 
-2. Before exiting, the program will output an html version of the schedule which can be edited in place (drag-and-drop names, edit names) for any manual tweaks that need to be made.
+2. Before exiting, the program will start a webapp where the schedule can be edited in place (drag-and-drop names, edit names) for any manual tweaks that need to be made.
 
-3. This edited html will then be used to generate a pdf of the schedule for distribution.
+3. From the webapp, a reveal-on-hover control menu in the upper left hand corner of the screen provides a 'Download PDF' button and a 'Commit' button.
+
+4. 'Commit' will save the current schedule to persistent csv file-store which will be used for the next non-year-month matching schedule generation.
 
 ### Setup
 
@@ -51,7 +53,7 @@ For example
 ./run.py 11 2024 /Users/Desktop/congregation-roster/roster-11-2024.pdf previous-assignments-test.csv
 ```
 
-### Explanations of csv files
+### Explanations of /data csv files
 
 1. `men.csv`: contains all men available for duty scheduling in the first column, the other columns are the duties to be scheduled for, cell values of a `1` indicate that that man may be assigned a task
 

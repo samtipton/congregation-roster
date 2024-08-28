@@ -1,8 +1,14 @@
 import re
+import json
 
 
 def trim_task_name(name):
-    return re.sub("-\d+$", "", name)
+    return re.sub(r"-\d+$", "", name)
+
+
+def write_dict_to_file(d, path):
+    json_str = json.dumps(d, indent=4, sort_keys=True, default=str)
+    write_string_to_file(json_str, path)
 
 
 def write_string_to_file(s, path):

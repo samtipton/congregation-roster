@@ -83,6 +83,47 @@ input[type="text"] {
   cursor: text;
 }
 
+input::placeholder {
+  color: #6a6a6a;
+  opacity: 1;
+}
+
 td.duty-cell:has(.search-highlight) {
   background: lightskyblue;
+}
+
+.mouse-reveal {
+  opacity: 0;
+}
+
+.mouse-reveal:hover {
+  opacity: 0.85;
+}
+
+.overlay {
+  position: absolute;
+  background: #888;
+  padding: 0.5rem;
+  top: 0;
+  left: 0;
+}
+
+.toast {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: small;
+  font-weight: bold;
+  position: absolute;
+  background: #888;
+  padding: 0.75rem 0.75rem;
+  bottom: 24px;
+  left: 50%;
+  color: white;
+  border-radius: 1.1rem;
+  opacity: 0;
+}
+
+@media print {
+  @page {
+    size: landscape;
+  }
 }

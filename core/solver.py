@@ -1,8 +1,8 @@
 from itertools import zip_longest
 from collections import OrderedDict
 from pulp import *
-from schedule import Schedule
-from helpers import *
+from .schedule import Schedule
+from util import *
 
 
 class SchedulingProblem:

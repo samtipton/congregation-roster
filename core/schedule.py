@@ -1,28 +1,28 @@
 import pandas as pd
-import re
 import calendar
+from .roster import Roster
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
-from helpers import trim_task_name
+from util.helpers import trim_task_name
 from collections import OrderedDict
 
 
 class Schedule:
-    def __init__(self, year, month, roster):
+    def __init__(self, year, month, roster: Roster):
         self.year = year
         self.month = month
         self.roster = roster
 
         self.calendar = calendar.monthcalendar(year, month)
-        self.service_times_df = pd.read_csv("service-times.csv", index_col=0)
+        self.service_times_df = pd.read_csv("data/service-times.csv", index_col=0)
 
-        self.duty_names_df = pd.read_csv("duty-names.csv", index_col=0)
+        self.duty_names_df = pd.read_csv("data/duty-names.csv", index_col=0)
         # label?
         self.duty_names = self.duty_names_df.to_dict()["Name"]
         self.schedule_duty_order = self.duty_names_df.index.to_list()
 
-        self.duty_codes_df = pd.read_csv("duty-codes.csv")
+        self.duty_codes_df = pd.read_csv("data/duty-codes.csv")
         self.service_days = set(
             self.duty_codes_df.select_dtypes(include="number").iloc[0, :].to_list()
         )
@@ -74,14 +74,12 @@ class Schedule:
 
     @staticmethod
     def get_coded_duty_assignments(duty_codes_df, code, assignments):
-        weekly_duties = duty_codes_df.loc[
-            0, (duty_codes_df == code).any()
-        ].index.to_list()
+        coded_duty = duty_codes_df.loc[0, (duty_codes_df == code).any()].index.to_list()
 
         return {
             task: assigned
             for task, assigned in assignments.items()
-            if trim_task_name(task) in weekly_duties
+            if trim_task_name(task) in coded_duty
         }
 
     @classmethod

@@ -2,8 +2,8 @@ import calendar
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
-from schedule import Schedule
-from helpers import *
+from core.schedule import Schedule
+from util import *
 
 EMPTY_HEADER_CELL = "<th class='empty'></th>"
 EMPTY_DATA_CELL = "<td class='empty'></td>"
@@ -61,7 +61,7 @@ def render_duty_assignment_cells(
             else (
                 f"""
                 <td class="duty-cell" draggable="true" data-duty="{f'{trimmed_duty}-{week[day_of_week]}'}">
-                    <input class="assignment-input" type="text" value="{schedule.service_assignments[service][f'{trimmed_duty}-{week[day_of_week]}']}">
+                    <input class="assignment-input keep-datalist" type="text" list="{trimmed_duty}" value="{schedule.service_assignments[service][f'{trimmed_duty}-{week[day_of_week]}']}">
                 </td>
                 """
                 if f"{trimmed_duty}-{week[day_of_week]}"
@@ -123,7 +123,7 @@ def render_weekly_duty_cell(schedule, trimmed_duty):
         (
             f"""
             <td class="duty-cell" draggable="true" data-duty="{f'{trimmed_duty}-{i}'}">
-                <input class="assignment-input" type="text" value="{service_assignments[f'{trimmed_duty}-{i}']}">
+                <input class="assignment-input keep-datalist" type="text" list="{trimmed_duty}" value="{service_assignments[f'{trimmed_duty}-{i}']}">
             </td>
             """
             if f"{trimmed_duty}-{i}" in service_assignments
@@ -195,9 +195,18 @@ def render_monthly_duties(schedule: Schedule):
     """
 
 
-def render_schedule_to_html(schedule: Schedule):
+def render_data_lists(schedule: Schedule):
+    lists = []
+
+    for task in schedule.roster.tasks:
+        eligible = schedule.roster.get_eligible(task)
+        lists.append(f'\n<datalist id="{task}">\n{"\n".join([f'<option value="{e}"></option>' for e in eligible])}\n</datalist>')
+
+    return "\n".join(lists)
+
+
+def render_schedule_to_html(schedule: Schedule, interactive=True):
     """
-    TODO insert/remove controls in html for manual editing
     TODO show ideal avg delta in cells, e.g. (+.33), if 33% closer to ideal avg after assign
 
         Will require dynamic re-calculating if the two elements being moved can use a template object with a table
@@ -214,12 +223,13 @@ def render_schedule_to_html(schedule: Schedule):
 
     service_names = schedule.service_names
 
-    with open("style.css", "r") as f:
+    with open("app/static/style.css", "r") as f:
         style = f.read()
 
-    with open("schedule.js") as f:
-        schedule_js = f.read()
-
+    # TODO jinja template for this?
+    # Clean-up non-interactive logic, something about link and script tags, 
+    # and datalists
+    # was making pdf 3000 pages long and throwing off layout
     return f"""
     <!DOCTYPE html>
     <html>
@@ -232,12 +242,21 @@ def render_schedule_to_html(schedule: Schedule):
                     integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
                     crossorigin="anonymous">
             </script>
+            {'<link rel="shortcut icon" href="/static/favicon.ico">' if interactive else ''}
+            {'<script src="/static/schedule.js"></script>' if interactive else ''}
             <style>{style}</style>
         </head>
         <body>
             <div class="header">
                 <h1>{calendar.month_name[schedule.month]}</h1>
             </div>
+            {'''
+             <div class="overlay mouse-reveal">
+                <button id="download-pdf">Download PDF</button>
+                <button id="commit-schedule">Commit</button>
+             </div>
+             ''' 
+             if interactive else ''}
             {render_service(service_names[0], 0, schedule, num_services)}
             <div class="banner dark-background">
                 2nd Service 10:30
@@ -245,7 +264,8 @@ def render_schedule_to_html(schedule: Schedule):
             {render_service(service_names[1], 0, schedule, num_services, header=False)}
             {render_service(service_names[2], 3, schedule, num_services)}
             {render_weekly_duties(schedule)}
-            <script>{schedule_js}</script>
+            {'<div class="toast" id="toast"></div>' if interactive else ''}
+            {render_data_lists(schedule) if interactive else ''}
         </body>
     </html>
     """
