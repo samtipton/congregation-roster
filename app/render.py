@@ -247,14 +247,15 @@ def render_schedule_to_html(schedule: Schedule, interactive=True):
             <style>{style}</style>
         </head>
         <body>
+            <div class="overlay mouse-reveal">
+                <button id="download-pdf">Download PDF</button>
+                <button id="toggle-assignment-count">Toggle Assignment Counts</button>
+                <button id="commit-schedule">Commit</button>
+            </div>
             <div class="header">
                 <h1>{calendar.month_name[schedule.month]}</h1>
             </div>
             {'''
-             <div class="overlay mouse-reveal">
-                <button id="download-pdf">Download PDF</button>
-                <button id="commit-schedule">Commit</button>
-             </div>
              ''' 
              if interactive else ''}
             {render_service(service_names[0], 0, schedule, num_services)}
@@ -265,6 +266,7 @@ def render_schedule_to_html(schedule: Schedule, interactive=True):
             {render_service(service_names[2], 3, schedule, num_services)}
             {render_weekly_duties(schedule)}
             {'<div class="toast" id="toast"></div>' if interactive else ''}
+            {'<div class="assignment-map hidden"></div>' if interactive else ''}
             {render_data_lists(schedule) if interactive else ''}
         </body>
     </html>

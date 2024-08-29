@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
   var dirty = false;
   var lastValue = "";
   var toastEl = document.getElementById("toast");
+  var assignmentFreqMap = new Map();
 
   function hideToast() {
     toastEl.style.opacity = "0.0";
@@ -47,10 +48,80 @@ document.addEventListener("DOMContentLoaded", (event) => {
       }).then((res) => {
         if (res.status === 204) {
           showToast("Saved");
+          updateAssignedCount();
         }
       });
     }, 2000);
     showToast("Saving...");
+  }
+
+  function toggleAssignmentCountVisibility() {
+    const el = document.querySelector(".assignment-map");
+    const hidden = el.classList.contains("hidden");
+
+    if (hidden) {
+      el.classList.remove("hidden");
+    } else {
+      el.classList.add("hidden");
+    }
+  }
+
+  function updateAssignedCount() {
+    assignmentFreqMap.clear();
+    var inputs = Array.from($("input.assignment-input"));
+
+    inputs.forEach((input) => {
+      const value = input.value.replace(/\(\d+\)/, "");
+
+      if (assignmentFreqMap.has(value)) {
+        assignmentFreqMap.set(value, assignmentFreqMap.get(value) + 1);
+      } else {
+        assignmentFreqMap.set(value, 1);
+      }
+    });
+
+    var container = document.querySelector("div.assignment-map");
+
+    // remove children
+    container.replaceChildren();
+
+    Array.from(assignmentFreqMap.entries())
+      .sort((a, b) => a[0].charCodeAt(0) - b[0].charCodeAt(0))
+      .sort((a, b) => b[1] - a[1])
+      .forEach((entry) => {
+        const div = document.createElement("div");
+
+        div.className = "assignment-map-entry";
+        div.textContent = `${entry[0]} (${entry[1]})`;
+        highlightOnMouseover(div);
+        clearHighlightOnMouseout(div);
+        container.append(div);
+      });
+
+    // console.log(assignmentFreqMap);
+  }
+
+  updateAssignedCount();
+
+  function highlightOnMouseover(el) {
+    el.addEventListener("mouseenter", (e) => {
+      $(el).addClass("search-highlight");
+      assignmentInputsByValue(
+        el.textContent.replace(/\s\(\d+\)/, ""),
+        (input) => $(input).addClass("search-highlight")
+      );
+    });
+  }
+
+  function clearHighlightOnMouseout(el) {
+    el.addEventListener("mouseleave", (e) => {
+      $(el).removeClass("search-highlight");
+
+      assignmentInputsByValue(
+        el.textContent.replace(/\s\(\d+\)/, ""),
+        (input) => $(input).removeClass("search-highlight")
+      );
+    });
   }
 
   function handleDragStart(e) {
@@ -90,7 +161,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
       this.innerHTML = e.dataTransfer.getData("text/html");
       setupInput(dragSrcEl.querySelector("input"));
       setupInput(this.querySelector("input"));
-      console.log("drop");
+
       saveAfterDelay();
     }
 
@@ -132,13 +203,22 @@ document.addEventListener("DOMContentLoaded", (event) => {
     );
   }
 
+  function assignmentInputsByValue(val, f) {
+    Array.from(
+      $(".assignment-input").filter((_, el) =>
+        filerOnValueOrPlaceholder(el, val)
+      )
+    ).forEach((el) => f(el));
+  }
+
   function addMouseOverListener(input) {
     input.addEventListener("mouseover", (event) => {
       // find all inputs with same value and change background
       let mouseoverValue = input.getAttribute("value");
-      $(".assignment-input")
-        .filter((_, el) => filerOnValueOrPlaceholder(el, mouseoverValue))
-        .addClass("search-highlight");
+
+      assignmentInputsByValue(mouseoverValue, (el) => {
+        $(el).addClass("search-highlight");
+      });
     });
   }
 
@@ -146,14 +226,17 @@ document.addEventListener("DOMContentLoaded", (event) => {
     input.addEventListener("mouseout", (event) => {
       // find all inputs with same value and change background
       let mouseoverValue = input.getAttribute("value").trim();
-      $(".assignment-input")
-        .filter((_, el) => filerOnValueOrPlaceholder(el, mouseoverValue))
-        .removeClass("search-highlight");
+
+      clearHighlights();
+      assignmentInputsByValue(mouseoverValue, (el) => {
+        $(el).remove("search-highlight");
+      });
     });
   }
 
   function clearHighlights() {
     $(".assignment-input").removeClass("search-highlight");
+    $(".assignment-map-entry").removeClass("search-highlight");
   }
 
   function setupInput(input) {
@@ -161,6 +244,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
     addInputListener(input);
     addMouseOverListener(input);
     addMouseoutListener(input);
+    setupInputEventListeners(input);
   }
 
   let inputs = document.querySelectorAll("input");
@@ -172,53 +256,47 @@ document.addEventListener("DOMContentLoaded", (event) => {
     window.location = "/pdf";
   };
 
+  document.getElementById("toggle-assignment-count").onclick =
+    toggleAssignmentCountVisibility;
+
   document.getElementById("commit-schedule").onclick = commit;
 
-  keepDatalistOptions(".month");
-  keepDatalistOptions(".keep-datalist");
-
-  function keepDatalistOptions(selector = "") {
-    // select all input fields by datalist attribute or by class/id
-    selector = !selector ? "input[list]" : selector;
-    let datalistInputs = document.querySelectorAll(selector);
-    if (datalistInputs.length) {
-      for (let i = 0; i < datalistInputs.length; i++) {
-        let input = datalistInputs[i];
-        input.addEventListener("input", function (e) {
-          // e.target.setAttribute("placeholder", e.target.value);
-          // lastValue = e.target.value;
-        });
-        input.addEventListener("change", function (e) {
-          // console.log("changed");
-          e.target.setAttribute("placeholder", e.target.value);
-          dirty = lastValue !== e.target.value;
-        });
-        input.addEventListener("focus", function (e) {
-          // console.log("focus");
-          e.target.setAttribute("placeholder", e.target.value);
-          lastValue = e.target.value;
-          e.target.value = "";
-        });
-        input.addEventListener("blur", function (e) {
-          e.target.value = e.target.getAttribute("placeholder");
-          if (dirty) {
-            // console.log("dirty blur: {}", e.target.value);
-            dirty = false;
-            saveAfterDelay();
-          }
-        });
-        input.addEventListener("keyup", function (e) {
-          console.log(`keyup: ${e.key}`);
-          if (e.key === "Enter" || e.keyCode === 13) {
-            // autocomplete using first option in list
-            autocompleteDatalist(input);
-            // activate blur to save
-            document.activeElement.blur();
-            // reset highlights
-          }
-        });
+  function setupInputEventListeners(input) {
+    input.addEventListener("change", function (e) {
+      // console.log("change");
+      e.target.setAttribute("placeholder", e.target.value);
+      dirty = lastValue !== e.target.value;
+    });
+    input.addEventListener("focus", function (e) {
+      // console.log("focus");
+      e.target.setAttribute("placeholder", e.target.value);
+      lastValue = e.target.value;
+      e.target.value = "";
+    });
+    input.addEventListener("blur", function (e) {
+      e.target.value = e.target.getAttribute("placeholder");
+      if (dirty) {
+        // console.log("dirty blur: {}", e.target.value);
+        dirty = false;
+        saveAfterDelay();
+        clearHighlights();
       }
-    }
+    });
+    input.addEventListener("keyup", function (e) {
+      // console.log(`keyup: ${e.key}`);
+      if (e.key === "Enter" || e.keyCode === 13) {
+        // autocomplete using first option in list
+        autocompleteDatalist(input);
+        // activate blur to save
+        document.activeElement.blur();
+        // reset highlights
+        clearHighlights();
+      }
+
+      if (!e.key) {
+        e.target.blur();
+      }
+    });
   }
 
   function autocompleteDatalist(input) {
@@ -235,7 +313,6 @@ document.addEventListener("DOMContentLoaded", (event) => {
       input.placeholder = relevantOptions.shift();
       input.innerHTML = input.placeholder;
       input.setAttribute("value", input.placeholder);
-      console.log(`setting ${input.placeholder}`);
     }
   }
 });
