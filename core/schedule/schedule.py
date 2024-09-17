@@ -1,11 +1,12 @@
 import pandas as pd
 import calendar
-from .roster import Roster
+from core.roster import Roster
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
-from util.helpers import trim_task_name
+from util.helpers import trim_task_name, trim_task_date
 from collections import OrderedDict
+from itertools import zip_longest
 
 
 class Schedule:
@@ -57,6 +58,16 @@ class Schedule:
         self.service_assignments["monthly"] = Schedule.get_coded_duty_assignments(
             self.duty_codes_df, "m", self.assignments
         )
+
+    def get_service_weeks(self):
+        return [
+            [week[day] for day in self.service_days if week[day]]
+            for week in self.calendar
+        ]
+
+    def get_duty_codes(self, task):
+        trimmed_task = trim_task_name(task)
+        return str(self.duty_codes_df.at[0, trimmed_task])
 
     @staticmethod
     def get_service_assignments(service_times_df, assignments):
@@ -126,3 +137,35 @@ class Schedule:
             return date_tasks
 
         return get_date_tasks
+
+    def week_aligned_date_tasks_pairs(self, task1, task2):
+        # need to pad start to get weekly duties to align correctly
+        # otherwise we exclude tasks in different weeks
+        # should go in schedule
+        task1_dates = self.get_date_tasks(task1)
+        task2_dates = self.get_date_tasks(task2)
+
+        task1_codes = self.get_duty_codes(task1)
+        task2_codes = self.get_duty_codes(task2)
+
+        if len(task1_dates) != len(task2_dates):
+            task1_weekly, task2_weekly = "w" in task1_codes, "w" in task2_codes
+
+            if task1_weekly ^ task2_weekly:
+                weekly_task_dates = task1_dates if "w" in task1_codes else task2_dates
+                daily_task_dates = task2_dates if "w" in task1_codes else task1_dates
+
+                if (
+                    len(weekly_task_dates) > len(daily_task_dates)
+                    and int(trim_task_date(daily_task_dates[0])) not in self.calendar[0]
+                ):
+                    daily_task_dates = [0, *daily_task_dates]
+
+                task1_dates = daily_task_dates
+                task2_dates = weekly_task_dates
+
+        return zip_longest(
+            task1_dates,
+            task2_dates,
+            fillvalue=0,
+        )

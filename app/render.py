@@ -59,11 +59,7 @@ def render_duty_assignment_cells(
             ""
             if not any(week[day] for day in schedule.service_days)
             else (
-                f"""
-                <td class="duty-cell" draggable="true" data-duty="{f'{trimmed_duty}-{week[day_of_week]}'}">
-                    <input class="assignment-input keep-datalist" type="text" list="{trimmed_duty}" value="{schedule.service_assignments[service][f'{trimmed_duty}-{week[day_of_week]}']}">
-                </td>
-                """
+                render_assignment_input(trimmed_duty, schedule.service_assignments[service][f'{trimmed_duty}-{week[day_of_week]}'], schedule, week[day_of_week])
                 if f"{trimmed_duty}-{week[day_of_week]}"
                 in schedule.service_assignments[service]
                 and week[day_of_week] != 0
@@ -115,16 +111,41 @@ def render_service(service_name, day_of_week, schedule, max_num_services, header
         </table>
     """
 
+def render_assignment_input(trimmed_duty, assigned_person, schedule: Schedule, data_suffix):
+    delta = schedule.roster.assignment_delta[assigned_person][trimmed_duty]
 
-def render_weekly_duty_cell(schedule, trimmed_duty):
+
+    if abs(delta) >= 100:
+        num_triangles = 3
+    elif abs(delta) >= 50:
+        num_triangles = 2
+    else:
+        num_triangles = 1
+
+    if delta == -100 or delta < 0.000001:
+        num_triangles = 0
+
+    triangle_class = 'green-triangle' if delta < 0 else 'red-triangle'
+    triangle = f'<div class="{triangle_class}"></div>'
+    # place this back in html
+    # {triangle * num_triangles}
+    return f"""
+            <td class="duty-cell" draggable="true" data-duty="{f'{trimmed_duty}-{data_suffix}'}">
+                <div style="position: relative;">
+                    <input class="assignment-input keep-datalist" type="text" list="{trimmed_duty}" value="{assigned_person}">
+                    <div style="position: absolute; display: flex; right: 5px; bottom: 1px;">
+                    </div>
+                </div>
+            </td>
+            """
+
+def render_weekly_duty_cell(schedule: Schedule, trimmed_duty):
     service_assignments = schedule.service_assignments["weekly"]
 
     assignments = [
         (
             f"""
-            <td class="duty-cell" draggable="true" data-duty="{f'{trimmed_duty}-{i}'}">
-                <input class="assignment-input keep-datalist" type="text" list="{trimmed_duty}" value="{service_assignments[f'{trimmed_duty}-{i}']}">
-            </td>
+            {render_assignment_input(trimmed_duty, service_assignments[f'{trimmed_duty}-{i}'], schedule, i)}
             """
             if f"{trimmed_duty}-{i}" in service_assignments
             else ""

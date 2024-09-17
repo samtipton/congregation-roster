@@ -1,5 +1,6 @@
 from itertools import zip_longest
 from collections import OrderedDict
+from logging import info
 from pulp import *
 from .schedule import Schedule
 from util import *
@@ -18,6 +19,7 @@ class SchedulingProblem:
         self.is_excluded = self.roster.is_excluded
         self.ideal_avg = self.roster.ideal_avg
         self.actual_avg = self.roster.actual_avg
+        self.excluded_tasks = self.roster.excluded_tasks
 
         self.all_date_tasks = schedule.all_date_tasks
         self.get_date_tasks = schedule.get_date_tasks
@@ -98,28 +100,21 @@ class SchedulingProblem:
                         self.prob += self.x[(person, ineligible_task)] == 0
 
     def constrain_do_not_assign_excluded_tasks(self):
-        for task1 in self.tasks:
-            for task2 in self.tasks:
-                if self.is_excluded(task1, task2):
-                    for person in self.people:
-                        if self.is_eligible(person, task1) and self.is_eligible(
-                            person, task2
+        for task1, task2 in self.excluded_tasks:
+            for person in self.people:
+                if self.is_eligible(person, task1) and self.is_eligible(person, task2):
+                    for ineligible_pair in self.schedule.week_aligned_date_tasks_pairs(
+                        task1, task2
+                    ):
+                        if (
+                            0 not in ineligible_pair
+                            and ineligible_pair[0] != ineligible_pair[1]
                         ):
-                            for ineligible_pair in zip_longest(
-                                self.get_date_tasks(task1),
-                                self.get_date_tasks(task2),
-                                fillvalue=0,
-                            ):
-                                if (
-                                    0 not in ineligible_pair
-                                    and ineligible_pair[0] != ineligible_pair[1]
-                                ):
-                                    for person in self.people:
-                                        self.prob += (
-                                            self.x[(person, ineligible_pair[0])]
-                                            + self.x[(person, ineligible_pair[1])]
-                                            <= 1
-                                        )
+                            self.prob += (
+                                self.x[(person, ineligible_pair[0])]
+                                + self.x[(person, ineligible_pair[1])]
+                                <= 1
+                            )
 
     def constrain_do_not_over_assign_in_month(self):
         for task in self.tasks:
@@ -130,6 +125,10 @@ class SchedulingProblem:
 
                 if num_eligible >= len(date_tasks):
                     # we have an abundance everyone should go at most once
+                    #
+                    # TODO catchup mechanism, if someone is behind in being assigned to a certain task
+                    # we can allow them to go twice in one month by checking if their actual_avg is below some threshold
+                    # when compared to the ideal_avg
                     self.prob += (
                         lpSum(self.x[(person, date_task)] for date_task in date_tasks)
                         <= 1

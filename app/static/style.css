@@ -144,6 +144,19 @@ div.search-highlight {
   visibility: hidden;
 }
 
+.red-triangle {
+  width: 0;
+  height: 0;
+  border: solid 4px;
+  border-color: transparent transparent red transparent;
+}
+.green-triangle {
+  width: 0;
+  height: 0;
+  border: solid 4px;
+  border-color: transparent transparent green transparent;
+}
+
 @media print {
   @page {
     size: landscape;
