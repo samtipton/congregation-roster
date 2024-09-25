@@ -9,7 +9,7 @@ calendar.setfirstweekday(calendar.SUNDAY)
 
 
 class Roster:
-    def __init__(self, assignment_history_file):
+    def __init__(self, assignment_history_file, rounds_history_file="data/rounds.csv"):
         # Read eligibility matrix
         self.eligibility_df = pd.read_csv("data/men.csv")
         self.eligibility_df.set_index("name", inplace=True)
@@ -29,10 +29,11 @@ class Roster:
         self.duty_codes_df = pd.read_csv("data/duty-codes.csv")
 
         # Rounds
-        self.rounds_df = pd.read_csv("data/rounds.csv")
+        self.rounds_history_file = rounds_history_file
+        self.initialize_rounds(rounds_history_file)
+        self.rounds_df = pd.read_csv(rounds_history_file)
         self.rounds_df.set_index("name", inplace=True)
         self.rounds_df.fillna(0, inplace=True)
-        self.rounds_df[self.rounds_df != "name"].astype("int")
 
         # Service days
         self.service_days = set(
@@ -99,15 +100,20 @@ class Roster:
 
             self.assignment_history_df.to_csv(assignment_history_file)
 
-    def record_assignments(self, assignments, rounds):
-        # TODO rounds should be recorded per tasks
-        # not every week has both services, need a way of tracking this
-        # to compute average correctly
+    def initialize_rounds(self, rounds_history_file):
+        if os.path.exists(rounds_history_file):
+            self.rounds_df = pd.read_csv(rounds_history_file, index_col=0)
+        else:
+            self.rounds_df = pd.DataFrame(0, index=self.people, columns=self.tasks)
+
+            self.rounds_df.to_csv(rounds_history_file)
+
+    def record_assignments(self, assignments):
         for task, person in assignments.items():
             self.assignment_history_df.loc[person, trim_task_name(task)] += 1
 
         self.assignment_history_df.to_csv(self.assignment_history_file)
-        self.increment_rounds()
+        self.increment_rounds(assignments)
 
     def remove_assignments(self, assignments):
         if self.assignment_history_df["Rounds"].all() == 0:
@@ -118,17 +124,23 @@ class Roster:
                 self.assignment_history_df.loc[person, trim_task_name(task)] -= 1
 
         self.assignment_history_df.to_csv(self.assignment_history_file)
-        self.decrement_rounds()
+        self.decrement_rounds(assignments)
 
-    def increment_rounds(self):
-        for person, task in self.eligible:
-            self.rounds_df.at[person, task] += 1
-        self.rounds_df.to_csv("data/rounds.csv")
+    def increment_rounds(self, assignments):
+        for date_task in assignments.keys():
+            trimmed_task = trim_task_name(date_task)
+            for person in self.get_eligible(trimmed_task):
+                self.rounds_df.at[person, trimmed_task] += 1
 
-    def decrement_rounds(self):
-        for person, task in self.eligible:
-            self.rounds_df.at[person, task] -= 1
-        self.rounds_df.to_csv("data/rounds.csv")
+        self.rounds_df.to_csv(self.rounds_history_file)
+
+    def decrement_rounds(self, assignments):
+        for date_task in assignments.keys():
+            trimmed_task = trim_task_name(date_task)
+            for person in self.get_eligible(trimmed_task):
+                self.rounds_df.at[person, trimmed_task] -= 1
+
+        self.rounds_df.to_csv(self.rounds_history_file)
 
     def is_eligible(self, person, task) -> bool:
         return self.eligibility_df.loc[person, task] == 1.0

@@ -1,9 +1,9 @@
 import pandas as pd
 import calendar
-from core.roster import Roster
 
 calendar.setfirstweekday(calendar.SUNDAY)
 
+from core.roster import Roster
 from util.helpers import trim_task_name, trim_task_date
 from collections import OrderedDict
 from itertools import zip_longest

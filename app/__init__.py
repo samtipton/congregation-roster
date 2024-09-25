@@ -42,9 +42,7 @@ def create_app(schedule: Schedule, **options) -> Flask:
                     return jsonify({"message": "success"}), 304
 
         # update csv
-        schedule.roster.record_assignments(
-            schedule.assignments, len(schedule.get_service_weeks)
-        )
+        schedule.roster.record_assignments(schedule.assignments)
 
         # write new assignments to tmp working dir
         write_dict_to_file(schedule.assignments, app.config["TMP_WORKING_PATH"])
