@@ -28,20 +28,6 @@ $ conda env create -f environment.yml
 
 3. If needed, activate this new environment `$ conda activate roster`
 
-#### Install packages with pip
-
-A few packages we need are not available with conda (pdfkit, pyquery)
-
-1. With your conda environment activated, ensure pip is installed in your env `$ which pip` should show a path into your env.
-
-2. Run
-
-```sh
-$ pip install -r requirements.txt
-```
-
-This should complete the python environment setup.
-
 ### How to run as a standalone python script
 
 5. Make `run.py` executable: `chmod u+x run.py`
