@@ -23,7 +23,7 @@ Conda is used for managing the environment/packages needed to run the library th
 2. Once installed (`$ conda`) shows output, and you are in the base environment (`$ conda activate base`) we need to create the custom environment we will use to install packages needed to run this application. Do so with:
 
 ```sh
-$ conda create --name roster --file conda-requirements.txt
+$ conda env create -f environment.yml
 ```
 
 3. If needed, activate this new environment `$ conda activate roster`
