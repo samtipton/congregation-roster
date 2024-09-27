@@ -199,5 +199,6 @@ dependencies:
       - pdfkit==1.0.0
       - pulp==2.9.0
       - pyquery==2.0.1
+      - python-dotenv==1.0.1
       - werkzeug==3.0.4
 prefix: /opt/anaconda3/envs/roster
