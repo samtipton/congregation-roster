@@ -17,6 +17,7 @@ class SchedulingProblem:
         self.is_eligible = self.roster.is_eligible
         self.get_eligible = self.roster.get_eligible
         self.is_excluded = self.roster.is_excluded
+        self.bias = self.roster.bias
         self.ideal_avg = self.roster.ideal_avg
         self.actual_avg = self.roster.actual_avg
         self.excluded_tasks = self.roster.excluded_tasks
@@ -78,15 +79,34 @@ class SchedulingProblem:
         """
         self.prob = LpProblem("Scheduling_Problem", LpMaximize)
         self.prob += lpSum(
+            # maximize the difference between ideal and actual averages
             (
                 self.ideal_avg[trim_task_name(date_task)]
-                - self.actual_avg.loc[person, trim_task_name(date_task)]
+                - (
+                    self.actual_avg.loc[person, trim_task_name(date_task)]
+                    # bias the value (.1 < bias_value < 1)
+                    * self.bias_value(person, date_task)
+                )
             )
-            * self.x[(person, date_task)]  # 1 if assigned, 0 otherwise
+            # 1 if assigned, 0 otherwise
+            * self.x[(person, date_task)]
             for person in self.people
             for date_task in self.all_date_tasks
             if self.is_eligible(person, trim_task_name(date_task))
         )
+
+    def bias_value(self, person, date_task):
+        bias_value = self.bias[trim_task_name(date_task)][person]
+
+        if bias_value == 0:
+            return 1
+
+        if bias_value < 1:
+            b = 1 / max(1 - bias_value, 0.01)
+        elif bias_value > 1:
+            b = 1 - bias_value
+
+        return b
 
     def constrain_one_person_per_task(self):
         for task in self.all_date_tasks:

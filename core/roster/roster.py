@@ -25,6 +25,16 @@ class Roster:
         # set of exclusion pairs, use is_eligible to ignore ordering
         self.excluded_tasks = self.create_excluded_tasks_cache()
 
+        # Read biases matrix
+        if os.path.isfile("data/biases.csv"):
+            self.bias_df = pd.read_csv("data/biases.csv", index_col=0)
+            self.bias_df.fillna(0, inplace=True)
+            self.bias = self.bias_df.to_dict()
+        else:
+            self.bias_df = self.eligibility_df.copy()
+            self.bias_df[:] = 0
+            self.bias = self.bias_df.to_dict()
+
         # Duty codes
         self.duty_codes_df = pd.read_csv("data/duty-codes.csv")
 
@@ -44,16 +54,30 @@ class Roster:
         self.assignment_history_file = assignment_history_file
         self.initialize_history(assignment_history_file)
 
-        # Number of scheduling rounds this roster has undergone
-        self.rounds = self.assignment_history_df.at[self.people[0], "Rounds"]
-
         # ideal avg for each task is perfect round robin or 1/(# eligible for task)
         self.ideal_avg = {
             task: 1 / count
             for task, count in self.eligibility_df.sum(axis=0).to_dict().items()
         }
 
+        # add new persons to rounds/history
+        # set their assignment history to 1 so they do not get biased in first schedule
+        for person in self.people:
+            if person not in self.assignment_history_df.index:
+                self.assignment_history_df.loc[person] = 0
+                self.assignment_history_df.loc[person] = self.assignment_history_df.loc[
+                    person
+                ] = [
+                    1 if self.is_eligible(person, task) else 0
+                    for task in self.assignment_history_df.columns
+                ]
+
+            if person not in self.rounds_df.index:
+                self.rounds_df.loc[person] = 1
+
         # if person is chosen for task, compute the difference between ideal and avg
+        # for DEBUG
+        # TODO: remove
         self.assignment_delta = {person: {} for person in self.people}
 
         # actual avg per person per task
@@ -64,6 +88,15 @@ class Roster:
                 self.actual_avg.at[person, task] = self.assignment_history_df.at[
                     person, task
                 ] / (max(self.rounds_df.at[person, task], 1))
+
+                # TODO: here we could reference a separate dataframe to deboost
+                # certain people from certain tasks by either:
+                # 1. increasing actual_avg by some percentage of the delta
+                # 2. decreasing number of rounds, will boost average
+                # 3. increasing their assignment history count some percentage of itself
+
+                # Does it matter if the changed value is not scaled in a coherent fashion?
+                # Yes - it might take them awhile to be assigned again
 
                 self.assignment_delta[person][task] = round(
                     (
