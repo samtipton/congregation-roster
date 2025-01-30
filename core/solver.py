@@ -32,6 +32,7 @@ class SchedulingProblem:
         )
 
         self.set_objective_function()
+        self.constrain_past_assignments()
         self.constrain_one_person_per_task()
         self.constrain_assign_only_eligible_people()
         self.constrain_do_not_assign_excluded_tasks()
@@ -94,6 +95,10 @@ class SchedulingProblem:
             for date_task in self.all_date_tasks
             if self.is_eligible(person, trim_task_name(date_task))
         )
+
+    def constrain_past_assignments():
+        """TODO Constrain all past assignments variables to 1"""
+        pass
 
     def bias_value(self, person, date_task):
         bias_value = self.bias[trim_task_name(date_task)][person]
