@@ -41,7 +41,7 @@ For example
 
 ### Explanations of /data csv files
 
-1. `men.csv`: contains all men available for duty scheduling in the first column, the other columns are the duties to be scheduled for, cell values of a `1` indicate that that man may be assigned a task
+1. `prefs.csv`: contains all men available for duty scheduling in the first column, the other columns are the duties to be scheduled for, cell values of a `1` indicate that that man may be assigned a task
 
 2. `exclusions.csv`: this file is an adjacency matrix of duties. If a cell value contains a 1, this indicates this duty should not be assigned to the same man.
 

@@ -1,7 +1,7 @@
 import unittest
 
 
-class RosterTests(unittest.TestCase):
+class TasksTests(unittest.TestCase):
     pass
 
 

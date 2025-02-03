@@ -1,21 +1,17 @@
 import unittest
+
 from ..schedule import Schedule
-from core.roster import Roster
 
 
 class ScheduleTests(unittest.TestCase):
 
     def test_service_weeks(self):
-        sch = Schedule(
-            2024, 9, Roster("core/schedule/test/unittest-previous-assignments.csv")
-        )
+        sch = Schedule(2024, 9)
 
         assert len(sch.get_service_weeks()) == 5
 
     def test_week_aligned_date_tasks_pairs(self):
-        sch = Schedule(
-            2024, 10, Roster("core/schedule/test/unittest-previous-assignments.csv")
-        )
+        sch = Schedule(2024, 9)
 
         aligned_tasks1 = sch.week_aligned_date_tasks_pairs(
             "sound_board_operator", "first_lesson"

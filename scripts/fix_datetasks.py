@@ -4,13 +4,19 @@ import os
 import re
 import sys
 
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.tasks import Tasks
+from core.task import TaskMetadata
 from util.helpers import trim_task_name
 
 JSON_OUTPUT_FILE_PATTERN = re.compile(r"[^\d]*(\d+)-(\d{4})\.json")
-DATE_TASK_PATTERN = re.compile(r"(\w*)-(\d{1,2})")
+OLD_DATE_TASK_PATTERN = re.compile(r"(\w*)-(\d{1,2})")
+OLD_DATE_SUB_PATTERN = re.compile(r"-[\d]*$")
+
+
+def trim_old_task_name(old_date_task):
+    return OLD_DATE_SUB_PATTERN.sub("", old_date_task)
 
 
 def get_files_in_directory_by_pattern(
@@ -52,7 +58,11 @@ def run():
             year = int(match.group(2))
         else:
             raise RuntimeWarning(f"Unexpected filename: {filename}")
-        tasks = Tasks(year, month)
+        task_metadata = TaskMetadata()
+
+        # files after 2025-3 are fixed
+        if year >= 2025 and month >= 3:
+            continue
 
         # print(f"{year}-{month}")
 
@@ -60,9 +70,11 @@ def run():
         # for weekly tasks = date_task form: {year}-{month}-{week}-{task}
         # for monthly tasks = date_task form: {year}-{month}-{task}
         for task, person in data.items():
-            day_task_match = DATE_TASK_PATTERN.search(task)
+            day_task_match = OLD_DATE_TASK_PATTERN.search(task)
             if day_task_match:
-                code = tasks.get_duty_code(trim_task_name(day_task_match.group(0)))
+                code = task_metadata.get_duty_code(
+                    trim_old_task_name(day_task_match.group(0))
+                )
                 task = day_task_match.group(1)
 
                 if code == "m":

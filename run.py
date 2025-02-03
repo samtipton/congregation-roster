@@ -9,6 +9,8 @@ from pathlib import Path
 from core.schedule import Schedule
 from core.solver import SchedulingProblem
 from core.roster import Roster
+from core.history import AssignmentHistory
+from core.stats import AssignmentStats
 from util.helpers import *
 
 import app
@@ -27,8 +29,8 @@ def parse_args():
     parser.add_argument(
         "-s",
         "--save_file",
-        default="data/previous-assignments.csv",
-        help="optional alternative 'save' csv file. If not specified previous-assignments.csv will be used",
+        default="data/previous-assignments.json",
+        help="optional alternative 'save' json file. If not specified previous-assignments.json will be used",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="turn on additional logging"
@@ -60,7 +62,10 @@ def main():
     os.makedirs(html_dir, exist_ok=True)
     os.makedirs(json_dir, exist_ok=True)
 
-    schedule = Schedule(year, month, Roster(args.save_file))
+    history = AssignmentHistory(args.save_file)
+    roster = Roster()
+    stats = AssignmentStats(roster, history)
+    schedule = Schedule(year, month)
 
     if os.path.exists(json_output_path):
         with open(json_output_path, "r") as f:
@@ -69,7 +74,7 @@ def main():
             schedule.set_assignments(assignments)
     else:
         print("Solving new Schedule...")
-        schedule_problem = SchedulingProblem(schedule)
+        schedule_problem = SchedulingProblem(schedule, roster, history)
         solver_result, solver_assignments, roster = schedule_problem.solve(
             verbose=args.verbose
         )
@@ -84,7 +89,7 @@ def main():
 
     # debug=True causes main to run twice because of the werkzeug reloader process, very sad
     # see https://stackoverflow.com/questions/25504149/why-does-running-the-flask-dev-server-run-itself-twice
-    app.create_app(schedule, options=options).run(debug=False)
+    app.create_app(schedule, roster, history, stats, options=options).run(debug=False)
 
     print("")
     print("html: " + term_link(f"file://{html_output_path}"))

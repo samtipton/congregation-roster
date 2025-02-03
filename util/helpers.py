@@ -2,12 +2,32 @@ import re
 import json
 
 
-def trim_task_name(name):
-    return re.sub(r"-\d+$", "", name)
+date_task_name_pattern = re.compile(r"-\w+$")
+date_task_date_pattern = re.compile(r"^[0-9]+-[0-9]+-(?:[0-9]+-)?")
+date_task_day_pattern = re.compile(r"^[0-9]+-[0-9]+-([0-9]+)-\w+$")
 
 
-def trim_task_date(name):
-    return re.sub(r"^[a-zA-Z_]+-", "", name)
+# TODO Should move into date task class?
+# TODO Names suggest opposite of what they do
+def trim_task_name(date_task):
+    """Trim/remove task date from date_task"""
+    return date_task_date_pattern.sub("", date_task)
+
+
+def trim_task_date(date_task):
+    """Trim/remove name from date_task"""
+    return date_task_name_pattern.sub("", date_task)
+
+
+def trim_date_task_day(date_task):
+    """trim the day numeric from the date_task, date_task is expected to contain it"""
+    match = date_task_day_pattern.search(date_task)
+    if match:
+        return match.group(1)
+    else:
+        raise ValueError(
+            f"Expected a date_task containing a day numeric in the form YYYY-mm-dd-<task_key>. Received {date_task}"
+        )
 
 
 def write_dict_to_file(d, path):

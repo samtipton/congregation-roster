@@ -1,6 +1,9 @@
 from flask import Flask, request, jsonify, send_file
-from app.render import render_schedule_to_html
+from app.render import ScheduleRenderer
 from core.schedule import Schedule
+from core.roster import Roster
+from core.stats import AssignmentStats
+from core.history import AssignmentHistory
 from util import assignments_from_html
 from logging.config import dictConfig
 from logging import info
@@ -11,7 +14,16 @@ import pdfkit
 from util.helpers import write_dict_to_file
 
 
-def create_app(schedule: Schedule, **options) -> Flask:
+# TODO move scheduling classes into /app/schedule/services/..
+# include here as blueprint
+# run.py goes away
+def create_app(
+    schedule: Schedule,
+    roster: Roster,
+    history: AssignmentHistory,
+    stats: AssignmentStats,
+    **options,
+) -> Flask:
 
     initialize_logger()
 
@@ -19,17 +31,17 @@ def create_app(schedule: Schedule, **options) -> Flask:
     app.config.from_mapping(options["options"])
     app.app_context
 
+    # TODO blueprints
+    # TODO Move to views
+    renderer = ScheduleRenderer(schedule, roster, stats)
+
     @app.put("/commit")
     def commit():
         """
-        commit schedule to persistent storage (rn, previous-assignments.csv)
+        Commit schedule to persistent storage (rn, previous-assignments.json)
 
-        first commit should only call record_assignments which will increment rounds
-
-        All other commits should first remove last commit from history
-        before committing new changes. This will decrement & increment rounds.
-
-        The last commit json is stored in a tmp working file
+        The last commit json is stored in a tmp working file so we can undo
+        and apply new changes
         """
 
         if os.path.exists(app.config["TMP_WORKING_PATH"]):
@@ -37,12 +49,12 @@ def create_app(schedule: Schedule, **options) -> Flask:
                 assignments = json.loads(f.read())
 
                 if assignments != schedule.assignments:
-                    schedule.roster.remove_assignments(assignments)
+                    history.remove_assignments(assignments)
                 else:
                     return jsonify({"message": "success"}), 304
 
-        # update csv
-        schedule.roster.record_assignments(schedule.assignments)
+        # update json
+        history.record_assignments(schedule.assignments)
 
         # write new assignments to tmp working dir
         write_dict_to_file(schedule.assignments, app.config["TMP_WORKING_PATH"])
@@ -52,7 +64,7 @@ def create_app(schedule: Schedule, **options) -> Flask:
     @app.get("/pdf")
     def download_pdf():
         pdf_output_filename = f"schedule-{schedule.month}-{schedule.year}.pdf"
-        html = render_schedule_to_html(schedule, interactive=False)
+        html = renderer.render_schedule_to_html(interactive=False)
 
         with open(app.config["HTML_OUTPUT_PATH"], "w+") as f:
             f.write(html)
@@ -81,6 +93,7 @@ def create_app(schedule: Schedule, **options) -> Flask:
 
         write json assignments to json output so we don't lose work if
         server crashes, run script will read from there
+        TODO instead of sending the entire html page, send json schedule format
         """
         new_schedule_html = request.data.decode("utf-8")
         new_assignments = assignments_from_html(new_schedule_html)
@@ -96,8 +109,7 @@ def create_app(schedule: Schedule, **options) -> Flask:
     @app.get("/")
     def get_schedule():
         # TODO cache using hash of assignment dict to key?
-        # no perf hit atm
-        schedule_html = render_schedule_to_html(schedule)
+        schedule_html = renderer.render_schedule_to_html()
 
         return schedule_html
 
