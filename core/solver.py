@@ -1,4 +1,5 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+from datetime import datetime, timedelta
 from pulp import *
 
 from core.history import AssignmentHistory
@@ -7,6 +8,8 @@ from core.schedule import Schedule
 from core.stats import AssignmentStats, AssignmentBiases
 from util import *
 from itertools import chain
+
+from logging import debug
 
 
 class SchedulingProblem:
@@ -39,19 +42,22 @@ class SchedulingProblem:
         self.historical_assignments_vars = list(history.assignment_history.items())
 
         # all possible assignment pair (person, task) combinations for month
-        assignment_vars = chain(
-            (
-                (date_task, person)
-                for person in self.people
-                for date_task in self.all_date_tasks
-                # if self.is_eligible(person, trim_task_name(date_task))
-            ),
-            self.historical_assignments_vars,
+
+        self.assignment_vars = list(
+            chain(
+                (
+                    (date_task, person)
+                    for person in self.people
+                    for date_task in self.all_date_tasks
+                    # if self.is_eligible(person, trim_task_name(date_task))
+                ),
+                self.historical_assignments_vars,
+            )
         )
 
         self.x = LpVariable.dicts(
             "assignment",
-            assignment_vars,
+            self.assignment_vars,
             cat="Binary",
         )
 
@@ -66,6 +72,12 @@ class SchedulingProblem:
 
     def solve(self, verbose=False):
         result = self.prob.solve(PULP_CBC_CMD(msg=verbose))
+
+        if self.prob.status == -1:
+            print(f"result: {LpStatus[self.prob.status]}")
+            print("debug constraints")
+            # for constraint in self.prob.constraints.values():
+            #     debug(constraint)
 
         # TODO I think there is some unnecessary code in here
         assignment = {}
@@ -193,23 +205,80 @@ class SchedulingProblem:
                     )
 
     def constrain_do_not_over_assign_new_people(self):
-        """TODO need to do more here"""
-        zero_average_people = self.actual_avg.index[
-            (self.actual_avg == 0).all(axis=1)
-        ].tolist()
-
-        for person in zero_average_people:
-            self.prob += (
-                lpSum(self.x[(date_task, person)] for date_task in self.all_date_tasks)
-                <= 2
-            )
+        """solved by boosting ideal avg, see stats.py"""
+        pass
 
     def constrain_month_boundary_assignments(self):
         """
-        TODO do not double assign person in next week if there are multiple choices
+        do not double assign person in next week if there are multiple choices
         month boundary doesn't matter rename method
         """
-        pass
+
+        today = datetime(self.schedule.year, self.schedule.month, 1)
+        first_of_month = today.replace(day=1)
+        last_week_prev_month = first_of_month - timedelta(days=7)
+
+        filtered_assignments = {}
+        for date_task, assigned in self.assignment_vars:
+            date_part, task_part = date_task.rsplit("-", 1)
+            date_obj = datetime.strptime(date_part, "%Y-%m-%d")
+
+            if date_obj >= last_week_prev_month:
+                filtered_assignments[date_task] = assigned
+
+        task_consec_pairs_dict = defaultdict(list)
+        grouped_tasks = defaultdict(list)
+
+        for date_task in filtered_assignments.keys():
+            date_part, task_part = date_task.rsplit("-", 1)
+            grouped_tasks[task_part].append(date_task)
+
+        # Sort and create tuples
+        # assumes we schedule contiguous months
+        # sort, then group by
+        # {
+        # task: [(dt0,dt1), (dt1, dt2), (dt2, dt3), (dt3, dt4])]
+        # }
+        for task, date_tasks in grouped_tasks.items():
+            sorted_dates = sorted(
+                date_tasks,
+                key=lambda x: datetime.strptime(x.rsplit("-", 1)[0], "%Y-%m-%d"),
+            )
+
+            task_consec_pairs_dict[task] = [
+                (sorted_dates[i], sorted_dates[i + 1])
+                for i in range(len(sorted_dates) - 1)
+            ]
+
+        task_consec_pairs_dict = dict(task_consec_pairs_dict)
+
+        # TODO
+        # TODO
+        for person in self.people:
+            for task, consec_date_tasks_pairs in task_consec_pairs_dict.items():
+                if (
+                    self.is_eligible(person, task)
+                    # Must check that there are enough people to go around
+                    and len(self.get_eligible(task)) >= 2
+                ):
+                    for i, (earlier_date_task, later_date_task) in enumerate(
+                        consec_date_tasks_pairs
+                    ):
+                        if (
+                            # earliest date is from last month, this assignment is known
+                            i == 0
+                            and person == filtered_assignments[earlier_date_task]
+                        ) or i > 0:
+                            self.prob += (
+                                self.x[
+                                    (
+                                        earlier_date_task,
+                                        person,
+                                    )
+                                ]
+                                + self.x[(later_date_task, person)]
+                            ) <= 1
+                        # print(f"{person}: {earlier_date_task} + {later_date_task} <= 1")
 
     def bias_value(self, person, date_task):
         bias_for_task = self.bias[trim_task_name(date_task)]

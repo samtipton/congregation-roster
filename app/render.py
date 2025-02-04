@@ -231,7 +231,7 @@ class ScheduleRenderer:
                 in service_assignments
                 else ""
             )
-            for i, week in enumerate(self.schedule.calendar)
+            for i in self.schedule.first_calendar_days_for_each_week
         ]
 
         return EMPTY_DATA_CELL.join([a for a in assignments if a])

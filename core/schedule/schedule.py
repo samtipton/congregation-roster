@@ -16,6 +16,12 @@ class Schedule:
         self.month = month
 
         self.calendar = calendar.monthcalendar(year, month)
+        self.first_calendar_days_for_each_week = (
+            self.get_first_calendar_day_for_each_week()
+        )
+
+        self.num_services = len(self.first_calendar_days_for_each_week)
+
         self.service_times_df = pd.read_csv("data/service-times.csv", index_col=0)
 
         self.duty_names_df = pd.read_csv("data/duty-names.csv", index_col=0)
@@ -85,41 +91,31 @@ class Schedule:
             if trim_task_name(task) in coded_duty
         }
 
-    """
-    For tasks that happen per service or weekly, we need to treat them
-    as separate tasks that need to be scheduled. We will add
-    columns to the data like `{year}-{month}-{day/week}-{task_key}`.
-
-    When using the date_task as an index into another frame, we
-    must trim the date_task back to its original form, e.g. `song_leader`
-    (task_key)
-
-    duty_codes (TODO rename task_codes) is referenced to modify how we multiple the duties
-    - tasks without any codes (not appearing in this df) are assumed
-      to be done at each service
-    - a code of 'w' represents a weekly duty
-    - a code of 'm' represents a monthly duty
-
-    weeks are zero-indexed, days are not, is that confusing?
-    TODO - evaluate week task day should be first day of week in month, check entire week
-    """
-
     def get_date_tasks(self, task):
+        """
+        For tasks that happen per service or weekly, we need to treat them
+        as separate tasks that need to be scheduled. We will add
+        columns to the data like `{year}-{month}-{day}-{task_key}`.
+
+        When using the date_task as an index into another frame, we
+        must trim the date_task back to its original form, e.g. `song_leader`
+        (task_key)
+
+        duty_codes (TODO rename task_codes) is referenced to modify how we multiple the duties
+        - tasks without any codes (not appearing in this df) are assumed
+          to be done at each service
+        - a code of 'w' represents a weekly duty
+        - a code of 'm' represents a monthly duty
+
+        weeks are dated to the 1st day (Sunday) of the week
+        """
         date_tasks = []
         metadata = TaskMetadata()
         code = metadata.get_duty_code(task)
         if code == "m":
-            date_tasks.append(f"{self.year}-{self.month}-{task}")
+            date_tasks.append(f"{self.year}-{self.month}-1-{task}")
         elif code == "w":
-            num_weeks = len(
-                [
-                    i
-                    for i, week in enumerate(self.calendar)
-                    if any(week[day] for day in metadata.service_days)
-                ]
-            )
-            # account for service-less beginning weeks!
-            for i in range(num_weeks):
+            for i in self.first_calendar_days_for_each_week:
                 date_tasks.append(f"{self.year}-{self.month}-{i}-{task}")
         else:
             codes = str(code)
@@ -162,3 +158,29 @@ class Schedule:
             date_tasks2,
             fillvalue=0,
         )
+
+    def get_first_calendar_day_for_each_week(self):
+        # week ordinals we have service
+        # week ordinals begin counting from 1
+        metadata = TaskMetadata()
+        week_ords = [
+            i + 1
+            for i, week in enumerate(self.calendar)
+            if any(week[day] for day in metadata.service_days)
+        ]
+
+        # first cal day for week n when we have service
+        first_cal_day_of_week = []
+        for week_ord in week_ords:
+            first_cal_day_of_week.append(
+                next(
+                    (
+                        day_ord
+                        for day_ord in self.calendar[week_ord - 1]
+                        if day_ord != 0
+                    ),
+                    None,
+                )
+            )
+
+        return first_cal_day_of_week

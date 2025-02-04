@@ -4,6 +4,8 @@ from core.history import AssignmentHistory
 from core.roster import Roster
 from util.helpers import write_dict_to_file
 
+gamma = 0.2  # decay parameter for new people
+
 
 class AssignmentStats:
     def __init__(self, roster: Roster, history: AssignmentHistory):
@@ -53,6 +55,13 @@ class AssignmentStats:
                     rounds = max(history.rounds(person, task), 1)
 
                     self.actual_avg.at[person, task] = assignment_frequency / (rounds)
+
+                    # boost new people
+                    if rounds <= 5:
+                        actual_avg = self.actual_avg.at[person, task]
+                        self.actual_avg.at[person, task] = (
+                            1 if actual_avg == 0 else actual_avg
+                        ) * (1 + (1 - gamma * rounds))
 
                     self.assignment_delta[task][person] = round(
                         (

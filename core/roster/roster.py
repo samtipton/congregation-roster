@@ -42,8 +42,8 @@ class Roster:
         for task1 in self.task_keys:
             for task2 in self.task_keys:
                 if (
-                    self.exclusions_df.loc[task1, task2] == 1
-                    or self.exclusions_df.loc[task2, task1] == 1
+                    exclusions_df.loc[task1, task2] == 1
+                    or exclusions_df.loc[task2, task1] == 1
                 ):
                     excluded_tasks.add((task1, task2))
 
