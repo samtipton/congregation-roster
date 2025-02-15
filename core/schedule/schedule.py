@@ -12,16 +12,7 @@ from collections import OrderedDict
 
 class Schedule:
     def __init__(self, year, month):
-        self.year = year
-        self.month = month
-
-        self.calendar = calendar.monthcalendar(year, month)
-        self.first_calendar_days_for_each_week = (
-            self.get_first_calendar_day_for_each_week()
-        )
-
-        self.num_services = len(self.first_calendar_days_for_each_week)
-
+        self.set_year_month(year, month)
         self.service_times_df = pd.read_csv("data/service-times.csv", index_col=0)
 
         self.duty_names_df = pd.read_csv("data/duty-names.csv", index_col=0)
@@ -36,6 +27,15 @@ class Schedule:
         self.service_names = self.service_times_df.index.to_list()
 
         self.assignments = None
+
+    def set_year_month(self, year, month):
+        self.year = year
+        self.month = month
+
+        self.calendar = calendar.monthcalendar(year, month)
+        self.first_calendar_days_for_each_week = (
+            self.get_first_calendar_day_for_each_week()
+        )
 
     def set_assignments(self, assignments):
         # sort keys based on names csv
@@ -62,10 +62,6 @@ class Schedule:
             [week[day] for day in self.service_days if week[day]]
             for week in self.calendar
         ]
-
-    def get_duty_codes(self, task):
-        trimmed_task = trim_task_name(task)
-        return str(self.duty_codes_df.at[0, trimmed_task])
 
     @staticmethod
     def get_service_assignments(service_times_df, assignments):
